@@ -1,0 +1,151 @@
+---
+title: "Splat API Reference: Conventions and Error Codes"
+description: "Base URL, Bearer token authentication, JSON response envelope, error codes, cursor pagination, and the scene processing lifecycle for the Splat REST API."
+---
+
+The Splat API is a REST API that lets you create, manage, and download 3D Gaussian Splat scenes programmatically. Every request goes to a single base URL, requires a Bearer token, and returns a consistent JSON envelope — whether the call succeeds or fails. This page covers the conventions that apply across every endpoint.
+
+## Base URL
+
+All API requests use the following base URL:
+
+```
+https://api.splat-3d.com
+```
+
+Every endpoint is prefixed with `/api/v1/`. For example, to list your scenes you call `GET https://api.splat-3d.com/api/v1/scenes`.
+
+## Authentication
+
+Every request must include your API key as a Bearer token in the `Authorization` header:
+
+```bash
+Authorization: Bearer s3d_your_key_here
+```
+
+API keys use the `s3d_` prefix and are 36 characters long. You can create and revoke keys from the [Splat dashboard](https://splat-3d.com/dashboard) under **Settings > API Keys**. See the [Authentication](/authentication) guide for full details on key management and best practices.
+
+<Warning>
+  Never include your API key in client-side code or commit it to version control. Use environment variables or a secrets manager to keep it safe.
+</Warning>
+
+## Response envelope
+
+### Success responses
+
+Every successful response wraps its payload in a `data` field alongside a `meta` object:
+
+```json
+{
+  "data": { ... },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+List endpoints include additional pagination fields in `meta`:
+
+```json
+{
+  "data": [ ... ],
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "next_cursor": "2026-04-13T12:00:00.000Z",
+    "has_more": true,
+    "count": 50
+  }
+}
+```
+
+### Error responses
+
+When a request fails, the response replaces `data` with an `error` object containing a machine-readable `code` and a human-readable `message`:
+
+```json
+{
+  "error": {
+    "code": "invalid_input",
+    "message": "iterations: Number must be less than or equal to 50000"
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+## Request IDs
+
+Every response includes a unique `request_id` in the `meta` object and as an `X-Request-Id` response header. When contacting support about a specific request, include this ID so the team can look up exactly what happened.
+
+## Error codes
+
+| HTTP Status | Code | Description |
+|-------------|------|-------------|
+| `400` | `invalid_input` | The request body failed validation. The `message` field identifies which field failed and why. |
+| `401` | `unauthorized` | The `Authorization` header is missing or the API key is invalid. |
+| `403` | `forbidden` | The API key is valid, but you don't have access to the requested resource. |
+| `404` | `not_found` | The scene or resource doesn't exist, or belongs to another account. |
+| `409` | `conflict` | The scene is in a state that doesn't allow this action (for example, starting processing on a scene that's already processing). |
+| `422` | `limit_exceeded` | An account limit was reached (for example, the maximum number of API keys). |
+| `429` | `rate_limited` | You've exceeded the request rate limit or the concurrent processing job limit. |
+| `500` | `internal_error` | Something went wrong on Splat's side. Retry with exponential backoff, or contact support with the request ID. |
+| `502` | `upstream_error` | The GPU backend returned an error. This is usually transient — retry after a short delay. |
+
+## Rate limits
+
+| Limit | Value |
+|-------|-------|
+| Requests per minute | 100 |
+| Concurrent processing jobs | 2 |
+| Max upload size | 2 GB |
+
+When you exceed the concurrent job limit, the API returns a `429` with the `rate_limited` code and a message explaining how many jobs are currently running.
+
+## Pagination
+
+List endpoints use cursor-based pagination. Pass the `next_cursor` value from one response as the `cursor` query parameter in your next request to fetch the following page.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `cursor` | `string` | — | The `created_at` timestamp of the last item from the previous page, returned as `next_cursor` in `meta`. |
+| `limit` | `integer` | `50` | Number of items to return per page. Minimum `1`, maximum `100`. |
+
+```bash
+# First page
+curl "https://api.splat-3d.com/api/v1/scenes?limit=20" \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+
+# Next page — use next_cursor from the previous response
+curl "https://api.splat-3d.com/api/v1/scenes?limit=20&cursor=2026-04-13T12:00:00.000Z" \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+When `has_more` is `false` in the response `meta`, you've reached the last page.
+
+## Processing lifecycle
+
+After you upload a file and call the process endpoint, a scene moves through these stages in order:
+
+```
+uploading → extracting_frames → running_sfm → training → exporting → compressing → complete
+```
+
+While a scene is processing, `GET /api/v1/scenes/{id}` returns the current `stage` and an `overallPct` (0–100) indicating overall progress. You can cancel at any point before `complete` by calling `POST /api/v1/scenes/{id}/cancel`. If processing fails for any reason, the status becomes `failed` with an error message.
+
+<Tip>
+  Poll at a 15-second interval to check scene status. Processing typically takes 8–45 minutes depending on your preset and video length.
+</Tip>
+
+## Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/scenes` | Create a scene and get a presigned upload URL |
+| `GET` | `/api/v1/scenes` | List your scenes (cursor-paginated) |
+| `GET` | `/api/v1/scenes/{id}` | Get scene status, parameters, and quality metrics |
+| `PATCH` | `/api/v1/scenes/{id}` | Update scene metadata (title, address, visibility) |
+| `DELETE` | `/api/v1/scenes/{id}` | Delete a scene and all associated files |
+| `POST` | `/api/v1/scenes/{id}/process` | Start the reconstruction pipeline |
+| `POST` | `/api/v1/scenes/{id}/cancel` | Cancel a running reconstruction job |
+| `GET` | `/api/v1/scenes/{id}/download` | Download the 3D model file (SOG or PLY) |

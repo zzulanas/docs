@@ -1,0 +1,148 @@
+---
+title: "SfM Backends: GLOMAP, COLMAP, and Pre-Supplied Poses"
+description: "Compare GLOMAP, COLMAP, and pre-supplied poses to pick the right SfM backend. Covers matching strategies, supported pose formats, and when to skip SfM entirely."
+---
+
+Before Splat can train a 3D Gaussian Splat model, it needs to know where each camera was positioned in space. Structure-from-Motion (SfM) is the process that figures this out: it analyzes overlapping features across your images and mathematically estimates the position and orientation of every camera in 3D space. These estimated camera poses are then used to initialize and supervise the Gaussian Splat training stage. Splat supports three SfM backends, each suited to different capture scenarios.
+
+## Backend comparison
+
+| Backend | Speed | Quality | Best for |
+|---------|-------|---------|----------|
+| `glomap` | Fast | Excellent | Most use cases (default) |
+| `colmap` | Slower | Excellent | Tricky scenes, legacy compatibility |
+| `none` | Instant | N/A | Pre-supplied poses (ARKit, COLMAP export) |
+
+## GLOMAP (default)
+
+[GLOMAP](https://github.com/colmap/glomap) is a modern, GPU-accelerated global mapper built on top of COLMAP's feature extraction and matching pipeline. Unlike incremental approaches, GLOMAP solves all camera poses simultaneously in a single global optimization pass, which makes it both faster and more robust for continuous walkthroughs.
+
+```json
+{
+  "sfm": {
+    "backend": "glomap"
+  }
+}
+```
+
+**Advantages:**
+- Significantly faster than incremental COLMAP
+- Uses GPU-accelerated SIFT for feature extraction
+- Global optimization is more robust for video walkthroughs
+- Default for all presets — no configuration required
+
+**When to use:** Almost always. GLOMAP is the recommended backend for video input and most photo sets.
+
+## COLMAP
+
+[COLMAP](https://colmap.github.io/) is the classic incremental SfM engine. It registers cameras one at a time, refining the reconstruction as each new image is added. It is extremely well-tested and handles a wide range of capture conditions.
+
+```json
+{
+  "sfm": {
+    "backend": "colmap"
+  }
+}
+```
+
+**Advantages:**
+- Mature and extensively validated in research and production
+- Can succeed on scenes where GLOMAP fails to register all images
+- Better handling of edge cases: very few images, extreme viewpoint changes, or low-texture surfaces
+
+**When to use:** If GLOMAP fails to register all your images, or for scenes with fewer than 10 images where incremental reconstruction may be more reliable.
+
+<Note>
+  COLMAP is noticeably slower than GLOMAP for most scenes. Expect 2–3x longer SfM stage times.
+</Note>
+
+## None (pre-supplied poses)
+
+Skip SfM entirely by providing your own camera poses alongside your images. Splat uses the poses you supply and goes directly to the Gaussian Splat training stage. This is the fastest path and gives you full control over pose quality.
+
+```json
+{
+  "sfm": {
+    "backend": "none"
+  },
+  "content_type": "application/zip"
+}
+```
+
+<Warning>
+  When using `sfm.backend: "none"`, you must upload a zip file that contains your images **and** camera poses. The zip must include either a `transforms.json` file or a COLMAP sparse directory.
+</Warning>
+
+### Supported pose formats
+
+**`transforms.json`** (NeRF / Instant-NGP format):
+
+```json
+{
+  "camera_angle_x": 0.8575,
+  "frames": [
+    {
+      "file_path": "images/frame_001.jpg",
+      "transform_matrix": [[...], [...], [...], [...]]
+    }
+  ]
+}
+```
+
+**COLMAP sparse directory** — structure your zip as follows:
+
+```
+your-upload.zip
+  images/
+    frame_001.jpg
+    frame_002.jpg
+    ...
+  sparse/0/
+    cameras.bin
+    images.bin
+    points3D.bin
+```
+
+### When to use pre-supplied poses
+
+<CardGroup cols={2}>
+  <Card title="iOS scanner apps" icon="mobile">
+    ARKit provides high-quality camera poses in real-time. Pass `sfm.backend: "none"` for the best results from phone captures.
+  </Card>
+  <Card title="Existing COLMAP exports" icon="folder-open">
+    If you have already run SfM offline, skip the SfM stage entirely and go straight to training.
+  </Card>
+  <Card title="Custom pose estimation" icon="route">
+    Supply poses from your own visual odometry or SLAM pipeline.
+  </Card>
+  <Card title="Re-training" icon="rotate">
+    Adjust training parameters and re-run training without repeating the SfM stage.
+  </Card>
+</CardGroup>
+
+<Tip>
+  ARKit poses from iOS devices are typically higher quality than SfM-estimated poses for phone captures. If you're building a mobile app, capture with ARKit and pass `sfm.backend: "none"` for the best results.
+</Tip>
+
+## Matching strategies
+
+All SfM backends except `none` use a feature matching step before pose estimation. You can control the matching strategy to optimize for your capture type.
+
+| Matcher | Description | Speed | Best for |
+|---------|-------------|-------|----------|
+| `exhaustive` | Compare every image pair | Slowest | Small to medium scenes (fewer than 200 images) |
+| `sequential` | Compare adjacent frames only | Fastest | Ordered video frames |
+| `vocab_tree` | Visual similarity-based matching | Medium | Large unordered photo sets |
+
+```json
+{
+  "sfm": {
+    "backend": "glomap",
+    "matcher": "sequential"
+  }
+}
+```
+
+<Tip>
+  For video input, `sequential` matching is usually both faster and more reliable since frames are naturally ordered. For unordered photo sets, use `exhaustive` (the default) or `vocab_tree` for large collections.
+</Tip>

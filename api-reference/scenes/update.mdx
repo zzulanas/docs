@@ -1,0 +1,136 @@
+---
+title: "PATCH /api/v1/scenes/{id} — Update Scene Metadata"
+description: "Update a scene's title, address, or visibility without affecting the 3D model or processing state. Only the fields you include are changed."
+---
+
+Use this endpoint to update the metadata of an existing scene. You can change the scene's display title, associate a physical address with it (useful for real estate and location-based apps), or control who can view it. Only the fields you include in the request body are updated; any field you omit remains unchanged. You can update a scene's metadata regardless of its current processing status.
+
+## Endpoint
+
+```
+PATCH https://api.splat-3d.com/api/v1/scenes/{id}
+```
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scene to update. This is the `sceneId` returned when you created the scene.
+</ParamField>
+
+## Request
+
+Send only the fields you want to update. All fields are optional.
+
+<ParamField body="title" type="string">
+  A new human-readable label for the scene. Replaces the existing title.
+</ParamField>
+
+<ParamField body="address" type="string">
+  A physical address to associate with this scene. Useful for real estate listings, venue walkthroughs, or any location-based use case.
+</ParamField>
+
+<ParamField body="visibility" type="string">
+  Controls who can view the scene. Options:
+  - `private` — only accessible to you via the API or dashboard
+  - `public` — accessible to anyone with the scene's shareable link
+</ParamField>
+
+## Response
+
+The response returns the full updated scene object reflecting all current field values.
+
+<ResponseField name="data.sceneId" type="string">
+  The unique identifier for the scene.
+</ResponseField>
+
+<ResponseField name="data.title" type="string">
+  The updated title.
+</ResponseField>
+
+<ResponseField name="data.address" type="string">
+  The updated address, if set.
+</ResponseField>
+
+<ResponseField name="data.visibility" type="string">
+  The updated visibility setting.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  The current processing status of the scene. Unchanged by this request.
+</ResponseField>
+
+<ResponseField name="meta.request_id" type="string">
+  A unique ID for this API request.
+</ResponseField>
+
+## Code examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X PATCH https://api.splat-3d.com/api/v1/scenes/$SCENE_ID \
+  -H "Authorization: Bearer $SPLAT_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Living Room — Final",
+    "address": "123 Main St, San Francisco, CA 94105",
+    "visibility": "public"
+  }'
+```
+
+```python Python
+import requests
+
+response = requests.patch(
+    f"https://api.splat-3d.com/api/v1/scenes/{scene_id}",
+    headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+    json={
+        "title": "Living Room — Final",
+        "address": "123 Main St, San Francisco, CA 94105",
+        "visibility": "public",
+    },
+)
+data = response.json()["data"]
+```
+
+```javascript JavaScript
+const response = await fetch(
+  `https://api.splat-3d.com/api/v1/scenes/${sceneId}`,
+  {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${SPLAT_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      title: "Living Room — Final",
+      address: "123 Main St, San Francisco, CA 94105",
+      visibility: "public",
+    }),
+  }
+);
+const { data } = await response.json();
+```
+
+</CodeGroup>
+
+**Response:**
+
+```json
+{
+  "data": {
+    "sceneId": "a1b2c3d4e5f6",
+    "title": "Living Room — Final",
+    "address": "123 Main St, San Francisco, CA 94105",
+    "visibility": "public",
+    "status": "complete"
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+<Note>
+  Updating a scene's metadata does not affect processing. You can rename a scene or change its visibility while it's still being reconstructed.
+</Note>

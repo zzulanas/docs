@@ -1,0 +1,167 @@
+---
+title: "GET /api/v1/scenes — List All Scenes"
+description: "Retrieve a cursor-paginated list of all scenes in your Splat account, sorted by creation date. Returns status, preset, and creation timestamp for each scene."
+---
+
+This endpoint returns all scenes belonging to your account, sorted by creation date in descending order (newest first). Results are cursor-paginated — you receive up to `limit` scenes per page, and use the `next_cursor` from the response to fetch the next page. When `has_more` is `false`, you've reached the end of your scene list.
+
+## Endpoint
+
+```
+GET https://api.splat-3d.com/api/v1/scenes
+```
+
+## Query parameters
+
+<ParamField query="limit" type="integer" default="50">
+  The number of scenes to return per page. Minimum `1`, maximum `100`.
+</ParamField>
+
+<ParamField query="cursor" type="string">
+  A pagination cursor from the previous response. Pass the `next_cursor` value from the last response's `meta` to fetch the next page. Omit this parameter to start from the first page.
+</ParamField>
+
+## Response
+
+<ResponseField name="data" type="array">
+  An array of scene objects. Each object represents one scene in your account.
+
+  <Expandable title="Scene object fields">
+    <ResponseField name="data[].sceneId" type="string">
+      The unique identifier for the scene.
+    </ResponseField>
+
+    <ResponseField name="data[].title" type="string">
+      The human-readable label for the scene.
+    </ResponseField>
+
+    <ResponseField name="data[].status" type="string">
+      The current status of the scene. One of: `uploading`, `processing`, `complete`, `failed`, or `cancelled`.
+    </ResponseField>
+
+    <ResponseField name="data[].preset" type="string">
+      The quality preset used when the scene was created.
+    </ResponseField>
+
+    <ResponseField name="data[].created_at" type="string">
+      ISO 8601 timestamp of when the scene was created.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="meta.request_id" type="string">
+  A unique ID for this API request.
+</ResponseField>
+
+<ResponseField name="meta.next_cursor" type="string">
+  Cursor to pass as the `cursor` query parameter to retrieve the next page. Only present when `has_more` is `true`.
+</ResponseField>
+
+<ResponseField name="meta.has_more" type="boolean">
+  Whether there are additional pages of results. When `false`, you've reached the last page.
+</ResponseField>
+
+<ResponseField name="meta.count" type="integer">
+  The number of scenes returned in this response page.
+</ResponseField>
+
+## Code examples
+
+<CodeGroup>
+
+```bash cURL
+# First page
+curl "https://api.splat-3d.com/api/v1/scenes?limit=20" \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+
+# Next page — use next_cursor from the previous response
+curl "https://api.splat-3d.com/api/v1/scenes?limit=20&cursor=2026-04-13T12:00:00.000Z" \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```python Python
+import requests
+
+def list_all_scenes(api_key):
+    scenes = []
+    cursor = None
+
+    while True:
+        params = {"limit": 50}
+        if cursor:
+            params["cursor"] = cursor
+
+        response = requests.get(
+            "https://api.splat-3d.com/api/v1/scenes",
+            headers={"Authorization": f"Bearer {api_key}"},
+            params=params,
+        )
+        body = response.json()
+        scenes.extend(body["data"])
+
+        meta = body["meta"]
+        if not meta["has_more"]:
+            break
+        cursor = meta["next_cursor"]
+
+    return scenes
+```
+
+```javascript JavaScript
+async function listAllScenes(apiKey) {
+  const scenes = [];
+  let cursor = null;
+
+  while (true) {
+    const url = new URL("https://api.splat-3d.com/api/v1/scenes");
+    url.searchParams.set("limit", "50");
+    if (cursor) url.searchParams.set("cursor", cursor);
+
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${apiKey}` },
+    });
+    const body = await res.json();
+    scenes.push(...body.data);
+
+    if (!body.meta.has_more) break;
+    cursor = body.meta.next_cursor;
+  }
+
+  return scenes;
+}
+```
+
+</CodeGroup>
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "sceneId": "a1b2c3d4e5f6",
+      "title": "Living Room Tour",
+      "status": "complete",
+      "preset": "standard",
+      "created_at": "2026-04-13T12:00:00.000Z"
+    },
+    {
+      "sceneId": "b2c3d4e5f6a1",
+      "title": "Kitchen Walkthrough",
+      "status": "processing",
+      "preset": "quality",
+      "created_at": "2026-04-13T10:30:00.000Z"
+    }
+  ],
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000",
+    "next_cursor": "2026-04-13T10:30:00.000Z",
+    "has_more": true,
+    "count": 2
+  }
+}
+```
+
+<Note>
+  The `cursor` value is the `created_at` timestamp of the last item in the previous page. You don't need to construct it yourself — always use the `next_cursor` value returned in `meta`.
+</Note>

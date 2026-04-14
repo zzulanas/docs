@@ -1,0 +1,170 @@
+---
+title: "GET /api/v1/scenes/{id} — Get Scene Status"
+description: "Retrieve status, pipeline stage, progress percentage, and quality metrics for a scene. Use this endpoint to poll for completion after starting processing."
+---
+
+This endpoint returns the full details for a single scene, including its current status, the parameters it was created with, and — once processing completes — quality metrics and a download URL. You'll use this endpoint to poll for completion after calling [Start Processing](/api-reference/scenes/process). The response shape changes depending on the scene's current status, so both variants are shown below.
+
+## Endpoint
+
+```
+GET https://api.splat-3d.com/api/v1/scenes/{id}
+```
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scene to retrieve. This is the `sceneId` returned when you created the scene.
+</ParamField>
+
+## Response
+
+<ResponseField name="data.sceneId" type="string">
+  The unique identifier for the scene.
+</ResponseField>
+
+<ResponseField name="data.title" type="string">
+  The human-readable label for the scene.
+</ResponseField>
+
+<ResponseField name="data.status" type="string">
+  The current scene status. One of:
+  - `uploading` — scene created, waiting for the file to be uploaded
+  - `processing` — reconstruction pipeline is running
+  - `complete` — reconstruction finished successfully
+  - `failed` — reconstruction failed; see `error` for details
+  - `cancelled` — processing was cancelled by the user
+</ResponseField>
+
+<ResponseField name="data.stage" type="string">
+  The current pipeline stage. Only present while `status` is `processing`. One of: `extracting_frames`, `running_sfm`, `training`, `exporting`, `compressing`.
+</ResponseField>
+
+<ResponseField name="data.overallPct" type="integer">
+  Overall progress through the pipeline, from `0` to `100`. Only present while `status` is `processing`.
+</ResponseField>
+
+<ResponseField name="data.download_url" type="string">
+  The path to download the reconstructed 3D model. Only present when `status` is `complete`. Pass this path to [Download a Scene](/api-reference/scenes/download).
+</ResponseField>
+
+<ResponseField name="data.format" type="string">
+  The primary output format that was produced. Only present when `status` is `complete`. Either `sog` or `ply`.
+</ResponseField>
+
+<ResponseField name="data.metrics" type="object">
+  Quality metrics for the reconstruction. Only present when `status` is `complete` and `compute_metrics` was enabled for the scene.
+
+  <Expandable title="metrics fields">
+    <ResponseField name="data.metrics.psnr" type="float">
+      Peak Signal-to-Noise Ratio of the reconstruction against the holdout image set. Higher is better — values above 24 dB indicate good quality.
+    </ResponseField>
+
+    <ResponseField name="data.metrics.num_gaussians" type="integer">
+      Total number of Gaussians in the final model. More Gaussians generally means more detail captured, but also a larger file size.
+    </ResponseField>
+
+    <ResponseField name="data.metrics.training_time_seconds" type="integer">
+      Wall-clock time in seconds that the training stage took to complete.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="data.error" type="string">
+  A human-readable error message. Only present when `status` is `failed`.
+</ResponseField>
+
+<ResponseField name="meta.request_id" type="string">
+  A unique ID for this API request.
+</ResponseField>
+
+## Code examples
+
+<CodeGroup>
+
+```bash cURL
+curl https://api.splat-3d.com/api/v1/scenes/$SCENE_ID \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```python Python
+import time
+import requests
+
+while True:
+    response = requests.get(
+        f"https://api.splat-3d.com/api/v1/scenes/{scene_id}",
+        headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+    )
+    data = response.json()["data"]
+    print(f"Status: {data['status']}")
+
+    if data["status"] == "complete":
+        break
+    elif data["status"] == "failed":
+        print("Processing failed:", data.get("error"))
+        break
+
+    time.sleep(15)
+```
+
+```javascript JavaScript
+const poll = async () => {
+  while (true) {
+    const res = await fetch(
+      `https://api.splat-3d.com/api/v1/scenes/${sceneId}`,
+      { headers: { Authorization: `Bearer ${SPLAT_API_KEY}` } }
+    );
+    const { data } = await res.json();
+    console.log(`Status: ${data.status}`);
+
+    if (data.status === "complete") return data;
+    if (data.status === "failed") throw new Error(data.error);
+
+    await new Promise((r) => setTimeout(r, 15000));
+  }
+};
+```
+
+</CodeGroup>
+
+## Example responses
+
+**While processing:**
+
+```json
+{
+  "data": {
+    "status": "processing",
+    "stage": "training",
+    "overallPct": 65
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+**When complete:**
+
+```json
+{
+  "data": {
+    "status": "complete",
+    "download_url": "/api/v1/scenes/a1b2c3d4e5f6/download",
+    "format": "sog",
+    "metrics": {
+      "psnr": 24.5,
+      "num_gaussians": 1940000,
+      "training_time_seconds": 180
+    }
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+<Tip>
+  Poll at a 15-second interval rather than continuously. Processing takes 8–45 minutes depending on your preset, so aggressive polling won't speed things up and may trigger rate limiting.
+</Tip>

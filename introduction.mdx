@@ -1,0 +1,86 @@
+---
+title: "What Is Splat? 3D Gaussian Splat Reconstruction API"
+description: "Splat converts video walkthroughs and photo sets into shareable 3D Gaussian Splat scenes via REST API. Upload, process, and embed with no GPU infrastructure."
+---
+
+Splat is a REST API that takes your photos and videos and returns fully reconstructed, shareable 3D Gaussian Splat scenes. You upload a video walkthrough or a set of photos, Splat runs GPU-accelerated structure-from-motion and model training on its serverless infrastructure, and within minutes you receive a web-optimized 3D scene you can embed in your app or share with a link — no servers to manage.
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Create your first 3D scene in 5 minutes.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Full endpoint documentation with interactive examples.
+  </Card>
+  <Card title="Quality Presets" icon="sliders" href="/guides/presets">
+    Choose the right speed-to-quality tradeoff for your use case.
+  </Card>
+  <Card title="Training Parameters" icon="gear" href="/guides/training-parameters">
+    Fine-tune every aspect of the reconstruction pipeline.
+  </Card>
+</CardGroup>
+
+## How the pipeline works
+
+When you submit a capture, Splat runs a five-stage pipeline automatically. Each stage runs on serverless GPUs — you pay only for the compute your job uses.
+
+<Steps>
+  <Step title="Upload">
+    Create a scene via the API to receive a presigned URL, then PUT your video, photo zip, or R3D file directly to cloud storage. Files up to 2 GB are supported.
+  </Step>
+  <Step title="Reconstruct camera poses">
+    Splat uses GPU-accelerated structure-from-motion (GLOMAP by default) to estimate the position and orientation of the camera at every frame. You can also supply your own poses from ARKit or COLMAP to skip this stage entirely.
+  </Step>
+  <Step title="Train a 3D Gaussian Splat model">
+    The reconstructed poses feed into [gsplat](https://docs.gsplat.studio/) training on A100 GPUs. The number of training iterations (3K–30K) controls the tradeoff between speed and quality.
+  </Step>
+  <Step title="Compress to SOG format">
+    The trained model is compressed into Splat's web-optimized SOG format so the scene loads instantly in any browser.
+  </Step>
+  <Step title="Serve">
+    Download the SOG or PLY file via the API, or share the Splat viewer link directly with your users.
+  </Step>
+</Steps>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Configurable quality presets" icon="gauge">
+    Four presets — `fast`, `standard`, `quality`, and `ultra` — range from roughly 8 to 45 minutes of processing time. Every preset can be further tuned with individual parameter overrides.
+  </Card>
+  <Card title="Multiple input types" icon="file-import">
+    Upload MP4 video files, ZIP archives of photos, or R3D captures from iOS. Splat handles frame extraction and validation automatically.
+  </Card>
+  <Card title="Pre-supplied camera poses" icon="camera">
+    Skip structure-from-motion entirely by providing camera poses from ARKit or COLMAP. This is useful when you already have accurate pose data or need deterministic results.
+  </Card>
+  <Card title="Web-optimized output" icon="file-export">
+    The SOG format loads instantly in any browser. Download the raw PLY file when you need to import into offline tools or run your own post-processing.
+  </Card>
+  <Card title="Quality metrics" icon="chart-bar">
+    Every completed scene returns PSNR, gaussian count, and training time so you can quantify reconstruction quality and compare presets.
+  </Card>
+  <Card title="Full parameter control" icon="sliders-horizontal">
+    Override the SfM backend, training iterations, resolution, output format, and more. Use `advanced` parameters for fine-grained control over the training loop.
+  </Card>
+</CardGroup>
+
+## Who Splat is for
+
+- **Developers** building 3D experiences and needing a reliable reconstruction API
+- **Real estate** platforms creating virtual property walkthroughs
+- **E-commerce** teams building interactive product viewers
+- **AR/VR creators** generating 3D content from real-world captures
+- **Researchers** working with Gaussian Splatting at scale
+
+## Base URL
+
+All API requests go to:
+
+```bash
+https://api.splat-3d.com
+```
+
+<Note>
+  The Splat API is currently in beta. The stable parameters documented here are part of the v1 contract. The `advanced` training parameters may evolve between versions.
+</Note>

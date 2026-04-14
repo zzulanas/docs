@@ -1,0 +1,126 @@
+---
+title: "GET /api/v1/scenes/{id}/download — Download 3D Model"
+description: "Download a completed scene as a web-optimized SOG file or raw PLY Gaussian Splat. Add ?format=ply to retrieve the PLY file. Returns a binary file stream."
+---
+
+Once a scene's status is `complete`, you can download the reconstructed 3D model using this endpoint. By default the response streams a SOG file — Splat's compressed, web-optimized Gaussian Splat format that loads instantly in any browser. Add `?format=ply` to download the raw PLY file instead, which is compatible with SuperSplat, Nerfstudio, the INRIA viewer, and other Gaussian Splat tools. Note that PLY output is only available if the `ply` format was included in the scene's `output.formats` configuration when it was created.
+
+## Endpoint
+
+```
+GET https://api.splat-3d.com/api/v1/scenes/{id}/download
+```
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scene to download. This is the `sceneId` returned when you created the scene.
+</ParamField>
+
+## Query parameters
+
+<ParamField query="format" type="string" default="sog">
+  The output format to download. Options:
+  - `sog` — (default) compressed, web-optimized Gaussian Splat. Use this for web and app delivery.
+  - `ply` — raw Gaussian Splat file. Use this for offline viewers and 3D tools.
+</ParamField>
+
+## Response
+
+Returns the 3D model file as a binary stream with the appropriate `Content-Type` header. There is no JSON envelope for this endpoint — the response body is the file itself.
+
+| Format | Content-Type | Extension |
+|--------|-------------|-----------|
+| `sog` | `application/octet-stream` | `.sog` |
+| `ply` | `application/octet-stream` | `.ply` |
+
+## Code examples
+
+<CodeGroup>
+
+```bash cURL
+# Download SOG (web-optimized, default)
+curl -O https://api.splat-3d.com/api/v1/scenes/$SCENE_ID/download \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+
+# Download PLY (raw, for offline tools)
+curl -O "https://api.splat-3d.com/api/v1/scenes/$SCENE_ID/download?format=ply" \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```python Python
+import requests
+
+# Download SOG
+response = requests.get(
+    f"https://api.splat-3d.com/api/v1/scenes/{scene_id}/download",
+    headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+)
+with open(f"scene-{scene_id}.sog", "wb") as f:
+    f.write(response.content)
+
+# Download PLY
+response = requests.get(
+    f"https://api.splat-3d.com/api/v1/scenes/{scene_id}/download",
+    headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+    params={"format": "ply"},
+)
+with open(f"scene-{scene_id}.ply", "wb") as f:
+    f.write(response.content)
+```
+
+```javascript JavaScript
+// Download SOG
+const res = await fetch(
+  `https://api.splat-3d.com/api/v1/scenes/${sceneId}/download`,
+  { headers: { Authorization: `Bearer ${SPLAT_API_KEY}` } }
+);
+const blob = await res.blob();
+
+// Download PLY
+const resPly = await fetch(
+  `https://api.splat-3d.com/api/v1/scenes/${sceneId}/download?format=ply`,
+  { headers: { Authorization: `Bearer ${SPLAT_API_KEY}` } }
+);
+const blobPly = await resPly.blob();
+```
+
+</CodeGroup>
+
+## Error responses
+
+If the scene hasn't finished processing yet, the API returns `409 Conflict`:
+
+```json
+{
+  "error": {
+    "code": "conflict",
+    "message": "Scene is not yet complete. Current status: processing."
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+If you request PLY but the scene was not configured to produce PLY output, the API returns `404 Not Found`:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "PLY output was not generated for this scene. Recreate the scene with \"ply\" in output.formats."
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+<Tip>
+  Use SOG for anything that runs in a browser or mobile app — it loads significantly faster than PLY. Use PLY when you need to import the scene into a desktop tool or run offline processing on the raw Gaussian data.
+</Tip>
+
+<Note>
+  The `quality` and `ultra` presets produce both SOG and PLY by default. The `fast` and `standard` presets produce SOG only. To get PLY from a `fast` or `standard` scene, set `output.formats` to `["sog", "ply"]` when creating the scene.
+</Note>

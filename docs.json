@@ -1,0 +1,94 @@
+{
+  "$schema": "https://mintlify.com/docs.json",
+  "theme": "luma",
+  "name": "Splat API",
+  "description": "Turn photos and videos into interactive 3D scenes.",
+  "logo": {
+    "light": "https://media.brand.dev/debbbfcc-8a45-409f-8ed4-c971683e8efe.svg",
+    "dark": "https://media.brand.dev/debbbfcc-8a45-409f-8ed4-c971683e8efe.svg"
+  },
+  "favicon": "https://media.brand.dev/1805a39b-0cd2-4116-8089-9f95b2fd4c71.png",
+  "colors": {
+    "primary": "#0c0c04",
+    "light": "#979696",
+    "dark": "#282827"
+  },
+  "appearance": {
+    "default": "dark"
+  },
+  "api": {
+    "playground": {
+      "display": "interactive"
+    },
+    "examples": {
+      "languages": ["bash", "python", "javascript"]
+    }
+  },
+  "navbar": {
+    "links": [
+      { "type": "github", "href": "https://github.com/zzulanas" }
+    ],
+    "primary": {
+      "type": "button",
+      "label": "Dashboard",
+      "href": "https://splat-3d.com/dashboard"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/zzulanas"
+    }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart", "authentication"]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/presets",
+              "guides/training-parameters",
+              "guides/sfm-backends",
+              "guides/output-formats"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": ["api-reference/overview"]
+          },
+          {
+            "group": "Scenes",
+            "pages": [
+              "api-reference/scenes/create",
+              "api-reference/scenes/list",
+              "api-reference/scenes/get",
+              "api-reference/scenes/update",
+              "api-reference/scenes/delete",
+              "api-reference/scenes/process",
+              "api-reference/scenes/cancel",
+              "api-reference/scenes/download"
+            ]
+          },
+          {
+            "group": "API Keys",
+            "pages": [
+              "api-reference/keys/create",
+              "api-reference/keys/list",
+              "api-reference/keys/revoke"
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

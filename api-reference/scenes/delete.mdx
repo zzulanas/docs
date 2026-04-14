@@ -1,0 +1,76 @@
+---
+title: "DELETE /api/v1/scenes/{id} — Delete a Scene"
+description: "Permanently delete a scene and all its files — source footage, intermediate outputs, and final SOG and PLY models. Returns 204 No Content on success."
+---
+
+Deleting a scene is permanent and irreversible. This removes the scene record from your account and deletes all files associated with it — the uploaded video or photo archive, any intermediate pipeline outputs, and the final SOG and PLY model files. If the scene is currently processing, the job is automatically cancelled before deletion. A successful delete returns `204 No Content` with no response body.
+
+## Endpoint
+
+```
+DELETE https://api.splat-3d.com/api/v1/scenes/{id}
+```
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scene to delete. This is the `sceneId` returned when you created the scene.
+</ParamField>
+
+## Response
+
+Returns `204 No Content` on success. No response body is included.
+
+## Code examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X DELETE https://api.splat-3d.com/api/v1/scenes/$SCENE_ID \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```python Python
+import requests
+
+response = requests.delete(
+    f"https://api.splat-3d.com/api/v1/scenes/{scene_id}",
+    headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+)
+# 204 No Content on success
+assert response.status_code == 204
+```
+
+```javascript JavaScript
+const response = await fetch(
+  `https://api.splat-3d.com/api/v1/scenes/${sceneId}`,
+  {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${SPLAT_API_KEY}` },
+  }
+);
+// 204 No Content on success
+console.log(response.status); // 204
+```
+
+</CodeGroup>
+
+## Error responses
+
+If the scene doesn't exist or doesn't belong to your account, the API returns a `404`:
+
+```json
+{
+  "error": {
+    "code": "not_found",
+    "message": "Scene not found."
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+<Warning>
+  Deletion is permanent. There is no way to recover a deleted scene or its files. Download any models you want to keep before deleting.
+</Warning>

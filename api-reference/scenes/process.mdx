@@ -1,0 +1,112 @@
+---
+title: "POST /api/v1/scenes/{id}/process — Start Reconstruction"
+description: "Kick off the Splat reconstruction pipeline after uploading your file. Runs SfM, Gaussian Splat training, export, and compression asynchronously on GPU."
+---
+
+Once you've uploaded your file to the presigned URL from [Create a Scene](/api-reference/scenes/create), call this endpoint to kick off the reconstruction pipeline. Processing moves the scene through the full lifecycle — frame extraction, structure-from-motion, Gaussian Splat training, export, and compression — using the parameters you specified at creation time. The endpoint returns immediately; use [Get a Scene](/api-reference/scenes/get) to poll for progress and completion.
+
+## Endpoint
+
+```
+POST https://api.splat-3d.com/api/v1/scenes/{id}/process
+```
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the scene to process. This is the `sceneId` returned when you created the scene.
+</ParamField>
+
+## Request body
+
+This endpoint takes no request body.
+
+## Response
+
+Returns `200 OK` on success with a confirmation in the `data` field.
+
+<ResponseField name="data.status" type="string">
+  The new status of the scene after this call. Will be `processing`.
+</ResponseField>
+
+<ResponseField name="meta.request_id" type="string">
+  A unique ID for this API request.
+</ResponseField>
+
+## Code examples
+
+<CodeGroup>
+
+```bash cURL
+curl -X POST https://api.splat-3d.com/api/v1/scenes/$SCENE_ID/process \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```python Python
+import requests
+
+requests.post(
+    f"https://api.splat-3d.com/api/v1/scenes/{scene_id}/process",
+    headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+)
+```
+
+```javascript JavaScript
+await fetch(`https://api.splat-3d.com/api/v1/scenes/${sceneId}/process`, {
+  method: "POST",
+  headers: { Authorization: `Bearer ${SPLAT_API_KEY}` },
+});
+```
+
+</CodeGroup>
+
+**Response:**
+
+```json
+{
+  "data": {
+    "status": "processing"
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+## Error responses
+
+If the scene is already processing or has already completed, the API returns a `409 Conflict`:
+
+```json
+{
+  "error": {
+    "code": "conflict",
+    "message": "Scene is already processing."
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+If you already have 2 scenes processing concurrently, the API returns `429`:
+
+```json
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "You already have 2 scenes processing. Please wait for them to finish."
+  },
+  "meta": {
+    "request_id": "550e8400-e29b-41d4-a716-446655440000"
+  }
+}
+```
+
+<Note>
+  You can have up to 2 scenes processing at the same time. If you need to process more scenes in parallel, contact support to discuss higher limits.
+</Note>
+
+<Tip>
+  After calling this endpoint, poll `GET /api/v1/scenes/{id}` every 15 seconds to track progress. Processing takes 8–45 minutes depending on your preset and the length of your footage.
+</Tip>

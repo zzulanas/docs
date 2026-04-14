@@ -1,0 +1,115 @@
+---
+title: "3D Output Formats: SOG vs PLY for Gaussian Splats"
+description: "Learn when to use SOG (web-optimized, fast-loading) versus PLY (raw, lossless) output from Splat. Covers file sizes, viewers, and how to download each format."
+---
+
+Splat can produce two output formats from a single reconstruction: **SOG** (Super-Optimized Gaussians) and **PLY** (Polygon File Format). SOG is a compressed, web-optimized format designed for fast loading in browsers. PLY is the raw, uncompressed Gaussian Splat file used by desktop tools, editors, and research pipelines. You control which formats are generated via the `output.formats` parameter when you create a scene.
+
+## Format comparison
+
+| | SOG | PLY |
+|--|-----|-----|
+| **Typical file size** | 5–15 MB | 30–80 MB |
+| **Web loading** | Fast (optimized) | Slow (large) |
+| **Browser support** | All modern browsers | All modern browsers |
+| **Editable** | No | Yes |
+| **Compression** | Lossy (quantized) | Lossless (full precision) |
+| **Use case** | Web delivery, embedding | Offline tools, editing, research |
+
+## SOG
+
+SOG is a compressed format designed specifically for fast web delivery. It uses quantization and efficient packing to reduce file sizes by 3–5x compared to raw PLY while maintaining visual quality suitable for real-time web rendering.
+
+```json
+{
+  "output": {
+    "formats": ["sog"]
+  }
+}
+```
+
+**Characteristics:**
+- Typically 5–15 MB for a full scene
+- Loads in 1–3 seconds on a typical connection
+- Renders with the PlayCanvas gsplat viewer
+- Lossy compression — fine details may be slightly reduced compared to PLY
+
+**When to use:** Any time your scene needs to load in a browser. Web apps, shareable embeds, mobile viewers. SOG is the default output for all presets.
+
+## PLY
+
+PLY is the standard interchange format for Gaussian Splats. It stores the full, uncompressed Gaussian parameters — position, covariance, color, opacity, and spherical harmonics coefficients — at full floating-point precision.
+
+```json
+{
+  "output": {
+    "formats": ["ply"]
+  }
+}
+```
+
+**Characteristics:**
+- Typically 30–80 MB depending on the number of Gaussians
+- Contains all Gaussian parameters at full precision
+- Compatible with all major Gaussian Splat viewers and editors
+- Lossless — exact training output with no compression artifacts
+
+**When to use:** When you need to post-process, edit, or analyze the Gaussian Splat data. Research workflows, offline rendering, format conversion, or feeding results into other tools.
+
+## Requesting both formats
+
+The `quality` and `ultra` presets produce both formats by default. You can also request both explicitly on any preset:
+
+```json
+{
+  "preset": "standard",
+  "output": {
+    "formats": ["sog", "ply"]
+  }
+}
+```
+
+<Note>
+  If you request PLY only (no SOG), the scene will not be viewable in the Splat web viewer. The web viewer requires SOG format.
+</Note>
+
+## Downloading your output
+
+When you download a completed scene, SOG is served by default. Add `?format=ply` to the download URL to retrieve the PLY file instead.
+
+<CodeGroup>
+
+```bash SOG (default)
+curl https://api.splat-3d.com/api/v1/scenes/$SCENE_ID/download \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```bash PLY
+curl https://api.splat-3d.com/api/v1/scenes/$SCENE_ID/download?format=ply \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+</CodeGroup>
+
+## Viewing SOG files
+
+SOG files are rendered using the [PlayCanvas gsplat viewer](https://github.com/playcanvas/supersplat). You have several options for viewing and embedding them:
+
+- **Splat viewer** — every completed scene has a shareable link at `https://splat-3d.com/s/{sceneId}`
+- **Embed in your app** — integrate the PlayCanvas viewer library directly into your web app
+- **SuperSplat** — the open-source desktop viewer from PlayCanvas
+
+## Working with PLY files
+
+PLY files are compatible with a broad ecosystem of tools:
+
+| Tool | Type | Description |
+|------|------|-------------|
+| [SuperSplat](https://playcanvas.com/supersplat/editor) | Browser-based editor | Edit, crop, and re-export Gaussian Splat scenes |
+| [3D Gaussian Splatting Viewer](https://github.com/graphdeco-inria/gaussian-splatting) | Desktop viewer | The original INRIA viewer for Gaussian Splats |
+| [Nerfstudio](https://docs.nerf.studio/) | Research framework | Further training, analysis, and format conversion |
+| Custom pipelines | Any | PLY is a standard format readable by most 3D libraries |
+
+<Tip>
+  For web delivery, always use SOG. Only request PLY when you specifically need the raw data for offline processing or compatibility with third-party tools.
+</Tip>

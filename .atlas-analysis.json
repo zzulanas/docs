@@ -1,0 +1,91 @@
+{
+  "projectType": "api-service",
+  "projectName": "Splat API",
+  "projectDescription": "A REST API that converts photos and videos into interactive, shareable 3D Gaussian Splat scenes.",
+  "theme": "luma",
+  "primaryColor": "#0c0c04",
+  "lightColor": "#979696",
+  "darkColor": "#282827",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "authentication"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/presets",
+              "guides/training-parameters",
+              "guides/sfm-backends",
+              "guides/output-formats"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "api-reference/overview"
+            ]
+          },
+          {
+            "group": "Scenes",
+            "pages": [
+              "api-reference/scenes/create",
+              "api-reference/scenes/list",
+              "api-reference/scenes/get",
+              "api-reference/scenes/update",
+              "api-reference/scenes/delete",
+              "api-reference/scenes/process",
+              "api-reference/scenes/cancel",
+              "api-reference/scenes/download"
+            ]
+          },
+          {
+            "group": "API Keys",
+            "pages": [
+              "api-reference/keys/create",
+              "api-reference/keys/list",
+              "api-reference/keys/revoke"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Upload video or photos and receive a fully reconstructed 3D Gaussian Splat",
+    "Configurable quality presets from fast previews to ultra-quality archival",
+    "Full parameter control over SfM backend, training iterations, resolution, and output formats",
+    "Multiple input types: MP4 video, photo zip archives, and R3D iOS captures",
+    "Web-optimized SOG output format for instant browser loading",
+    "Pre-supplied pose support (ARKit, COLMAP) to skip structure-from-motion",
+    "Quality metrics (PSNR, gaussian count) returned with every completed scene",
+    "Shareable scene links and embeddable viewer"
+  ],
+  "publicApiSurface": [
+    "POST /api/v1/scenes — Create a scene and get a presigned upload URL",
+    "GET /api/v1/scenes — List scenes (cursor-paginated)",
+    "GET /api/v1/scenes/{id} — Get scene status, parameters, and metrics",
+    "PATCH /api/v1/scenes/{id} — Update scene metadata",
+    "DELETE /api/v1/scenes/{id} — Delete a scene",
+    "POST /api/v1/scenes/{id}/process — Start the reconstruction pipeline",
+    "POST /api/v1/scenes/{id}/cancel — Cancel a running job",
+    "GET /api/v1/scenes/{id}/download — Download SOG or PLY output",
+    "GET /api/v1/scenes/{id}/thumbnail — Get scene thumbnail",
+    "POST /api/v1/keys — Create an API key",
+    "GET /api/v1/keys — List API keys",
+    "DELETE /api/v1/keys/{id} — Revoke an API key"
+  ]
+}

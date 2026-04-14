@@ -1,0 +1,208 @@
+---
+title: "Fine-Tune 3D Reconstruction with Training Parameters"
+description: "Control every stage of the Splat pipeline with stable and advanced parameters. Covers defaults, valid ranges, and copy-paste recipes for common setups."
+---
+
+Beyond presets, Splat gives you direct control over individual parameters at each stage of the reconstruction pipeline — structure-from-motion, Gaussian Splat training, and output generation. Parameters are split into two tiers: **stable** parameters are part of the v1 API contract and will not change between versions, while **advanced** parameters are experimental and may evolve. Start with a preset, then override only what you need to change.
+
+## Stable parameters
+
+These are the parameters you will use most often. They are fully supported and stable across API versions.
+
+### `preset`
+
+| Type | Default | Options |
+|------|---------|---------|
+| `string` | `"standard"` | `fast`, `standard`, `quality`, `ultra`, `custom` |
+
+The base preset to use. All other parameter values that you do not explicitly set are inherited from this preset. See [Quality Presets](/guides/presets) for a full comparison.
+
+---
+
+### `sfm.backend`
+
+| Type | Default | Options |
+|------|---------|---------|
+| `string` | `"glomap"` | `glomap`, `colmap`, `none` |
+
+The structure-from-motion engine used to estimate camera poses from your images. GLOMAP is faster and the recommended default. Use `colmap` for difficult scenes or edge cases. Use `none` to supply your own camera poses and skip SfM entirely. See [SfM Backends](/guides/sfm-backends) for a detailed comparison.
+
+---
+
+### `sfm.matcher`
+
+| Type | Default | Options |
+|------|---------|---------|
+| `string` | `"exhaustive"` | `exhaustive`, `sequential`, `vocab_tree` |
+
+Controls how image pairs are matched during SfM. `exhaustive` compares every pair and is the best choice for small to medium scenes. `sequential` assumes ordered frames and is the fastest option for video input. `vocab_tree` uses visual similarity and works well for large, unordered photo collections.
+
+---
+
+### `sfm.max_image_size`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `integer` | Varies by preset | `0` (full resolution) or `400`–`4096` |
+
+Maximum image dimension in pixels. Images larger than this value are downscaled before SfM and training. Set to `0` to disable downscaling and use full-resolution images.
+
+---
+
+### `training.iterations`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `integer` | Varies by preset | `1,000`–`50,000` |
+
+Number of Gaussian Splat training iterations. More iterations generally produce higher quality results but take longer to process. Diminishing returns typically set in around 15,000 iterations for most scenes.
+
+---
+
+### `output.formats`
+
+| Type | Default |
+|------|---------|
+| `string[]` | Varies by preset |
+
+Which output formats to generate. Pass `"sog"` for a compressed, web-optimized file, `"ply"` for the raw uncompressed Gaussian data, or both. See [Output Formats](/guides/output-formats) for details on when to use each.
+
+---
+
+### `output.compute_metrics`
+
+| Type | Default |
+|------|---------|
+| `boolean` | Varies by preset |
+
+Whether to compute PSNR quality metrics on a holdout set of images. Enabling this adds a small amount of processing time but gives you a quantitative measure of reconstruction quality.
+
+---
+
+## Advanced parameters
+
+<Warning>
+  Advanced parameters are experimental and may change between API versions. Use them only when you have a specific reason to adjust them and understand the effect on your scenes.
+</Warning>
+
+### `training.sh_degree`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `integer` | `3` | `0`–`4` |
+
+Spherical harmonics degree for view-dependent color. Higher values capture more view-dependent effects such as specular reflections, but increase model size and training time. `3` is the standard for most scenes.
+
+---
+
+### `training.densify_grad_thresh`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `float` | `0.0002` | `0.00001`–`0.01` |
+
+Gradient threshold that determines when a Gaussian is split or cloned during densification. Lower values create more Gaussians (denser representation, higher detail). Higher values create fewer Gaussians (sparser representation, faster rendering).
+
+---
+
+### `training.densify_interval`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `integer` | `100` | `50`–`1,000` |
+
+How often, in iterations, the densification step runs. More frequent densification can capture fine details earlier in training but may slow overall training time.
+
+---
+
+### `training.opacity_reset_interval`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `integer` | `3000` | `500`–`10,000` |
+
+How often, in iterations, Gaussian opacities are reset. Periodic resets help prune unnecessary Gaussians and reduce floating artifacts in the final output.
+
+---
+
+### `training.resolution_scale`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `float` | `1.0` | `0.25`–`2.0` |
+
+A scale factor applied to training images. Values below `1.0` train at lower resolution and are faster. Values above `1.0` train at higher resolution and can capture more detail but take longer.
+
+---
+
+### `training.ssim_weight`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `float` | `0.2` | `0.0`–`1.0` |
+
+Weight of the SSIM loss term relative to L1 loss. The total loss is computed as `(1 - ssim_weight) * L1 + ssim_weight * SSIM`. Higher values cause training to prioritize structural similarity over per-pixel accuracy.
+
+---
+
+### `output.holdout_ratio`
+
+| Type | Default | Range |
+|------|---------|-------|
+| `float` | `0.1` | `0.0`–`0.5` |
+
+Fraction of images reserved for metric evaluation. Only used when `output.compute_metrics` is `true`. Set to `0` to use all images for training and disable holdout-based metrics.
+
+---
+
+## Common recipes
+
+Start with one of these ready-to-use configurations and adjust from there.
+
+<CodeGroup>
+
+```json Quick preview for testing
+{
+  "preset": "fast"
+}
+```
+
+```json High quality with metrics
+{
+  "preset": "quality",
+  "output": {
+    "compute_metrics": true,
+    "holdout_ratio": 0.15
+  }
+}
+```
+
+```json Maximum detail, slower training
+{
+  "preset": "custom",
+  "training": {
+    "iterations": 30000,
+    "sh_degree": 4,
+    "densify_grad_thresh": 0.0001
+  },
+  "output": {
+    "formats": ["sog", "ply"],
+    "compute_metrics": true
+  }
+}
+```
+
+```json Ordered video with sequential matching
+{
+  "preset": "standard",
+  "sfm": {
+    "matcher": "sequential"
+  }
+}
+```
+
+</CodeGroup>
+
+<Tip>
+  Start with a preset and override only the specific parameters that affect your scenes. The defaults work well for the vast majority of captures.
+</Tip>

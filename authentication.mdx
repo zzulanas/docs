@@ -1,0 +1,131 @@
+---
+title: "API Keys and Authentication for the Splat API"
+description: "Create and manage API keys, authenticate requests with Bearer tokens, understand rate limits, and handle auth errors in your Splat integration."
+---
+
+Every request to the Splat API must include an API key passed as a Bearer token in the `Authorization` header. Keys use the `s3d_` prefix and are cryptographically random — they are hashed server-side and only shown to you once at creation time.
+
+## Getting an API key
+
+You create API keys from the Splat dashboard. You cannot create a key using another key — key creation requires an active dashboard session.
+
+<Steps>
+  <Step title="Sign in to the dashboard">
+    Go to [splat-3d.com/dashboard](https://splat-3d.com/dashboard) and sign in to your account.
+  </Step>
+  <Step title="Open API Keys settings">
+    Navigate to **Settings > API Keys**.
+  </Step>
+  <Step title="Create a new key">
+    Click **Create Key**, give the key a descriptive name (for example, `production-backend` or `ci-pipeline`), and confirm.
+  </Step>
+  <Step title="Copy the key immediately">
+    Copy the full key value now. It is only shown once. If you lose it, you will need to revoke the key and create a new one.
+  </Step>
+</Steps>
+
+<Warning>
+  Your API key is shown exactly once when created. Store it in a secrets manager or environment variable immediately. If you lose it, revoke the old key and create a new one.
+</Warning>
+
+## Making authenticated requests
+
+Pass your key as a Bearer token in every request:
+
+```bash
+curl https://api.splat-3d.com/api/v1/scenes \
+  -H "Authorization: Bearer s3d_a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+```
+
+In practice, read the key from an environment variable so it never appears in source code:
+
+```bash
+export SPLAT_API_KEY="s3d_your_key_here"
+
+curl https://api.splat-3d.com/api/v1/scenes \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+## Key format
+
+| Property | Value |
+|----------|-------|
+| Prefix | `s3d_` |
+| Total length | 36 characters |
+| Entropy | 128 bits (cryptographically random) |
+| Server storage | SHA-256 hashed — the full key is never stored in plaintext |
+
+## Managing your keys
+
+You can have up to **10 active API keys** per account. Use the `/keys` endpoint to list all active keys or revoke a specific key by its ID.
+
+```bash
+# List your keys (never returns the full key value)
+curl https://api.splat-3d.com/api/v1/keys \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+
+# Revoke a key by ID
+curl -X DELETE https://api.splat-3d.com/api/v1/keys/$KEY_ID \
+  -H "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+<Note>
+  The list endpoint returns metadata (name, `last_used_at`, creation date) but never the full key value. Use `last_used_at` to identify and revoke keys that are no longer in use.
+</Note>
+
+## Rate limits
+
+| Limit | Value |
+|-------|-------|
+| Requests per minute | 100 |
+| Concurrent processing jobs | 2 |
+| Max file upload size | 2 GB |
+
+When you exceed the concurrent jobs limit, the API returns a `429` response:
+
+```json
+{
+  "error": {
+    "code": "rate_limited",
+    "message": "You already have 2 scenes processing. Please wait for them to finish."
+  },
+  "meta": {
+    "request_id": "..."
+  }
+}
+```
+
+## Authentication error codes
+
+All authentication errors use the standard Splat error envelope with an `error.code` field you can match programmatically.
+
+| HTTP status | Code | Meaning |
+|-------------|------|---------|
+| `401` | `unauthorized` | Missing or invalid API key |
+| `403` | `forbidden` | Valid key, but you don't have access to this resource |
+| `429` | `rate_limited` | Too many requests or too many concurrent processing jobs |
+
+Example `401` response:
+
+```json
+{
+  "error": {
+    "code": "unauthorized",
+    "message": "Authentication required."
+  },
+  "meta": {
+    "request_id": "abc123"
+  }
+}
+```
+
+## Best practices
+
+<Tip>
+  Store API keys in environment variables or a secrets manager. Never hardcode them in source code or commit them to version control.
+</Tip>
+
+- **One key per environment** — use separate keys for development, staging, and production so you can rotate or revoke each independently.
+- **Use descriptive names** — name keys after their purpose (for example, `production-backend` or `ci-pipeline`) so you can identify them at a glance in the dashboard.
+- **Rotate regularly** — revoke and replace keys on a schedule, or immediately if you suspect a key has been exposed.
+- **Monitor `last_used_at`** — periodically review the key list and revoke any keys that haven't been used recently.

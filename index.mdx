@@ -1,0 +1,59 @@
+---
+title: "Splat API: Turn Photos and Videos into 3D Scenes"
+description: "Splat converts your video walkthroughs and photo sets into interactive 3D Gaussian Splats. Upload, process, and serve photo-realistic 3D scenes via REST API."
+---
+
+Splat is a REST API that takes your videos and photos and returns fully reconstructed, web-ready 3D Gaussian Splat scenes. Point the API at a video walkthrough, and within minutes you have a shareable, embeddable 3D scene — no GPU infrastructure to manage.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Create your first 3D scene in 5 minutes with a single video upload.
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Full endpoint documentation with interactive request examples.
+  </Card>
+  <Card title="Quality Presets" icon="sliders" href="/guides/presets">
+    Choose the right speed-to-quality tradeoff for your use case.
+  </Card>
+  <Card title="Authentication" icon="key" href="/authentication">
+    Get your API key and start making authenticated requests.
+  </Card>
+</CardGroup>
+
+## How it works
+
+<Steps>
+  <Step title="Upload your capture">
+    Create a scene via the API to receive a presigned upload URL, then PUT your video, photo zip, or R3D file directly to cloud storage.
+  </Step>
+  <Step title="Start processing">
+    Call the `/process` endpoint to kick off the GPU-accelerated reconstruction pipeline — structure-from-motion followed by Gaussian Splat training.
+  </Step>
+  <Step title="Poll for completion">
+    Poll `GET /api/v1/scenes/{id}` until the status is `complete`. Processing typically takes 8–45 minutes depending on your quality preset.
+  </Step>
+  <Step title="Download and serve">
+    Download the web-optimized SOG file or raw PLY, then serve it through your app or share the Splat viewer link directly.
+  </Step>
+</Steps>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Quality Presets" icon="gauge" href="/guides/presets">
+    Four presets from `fast` (8 min) to `ultra` (45 min) with full parameter override support.
+  </Card>
+  <Card title="Multiple Input Types" icon="file-import" href="/quickstart">
+    MP4 video, photo zip archives, and R3D iOS captures all supported.
+  </Card>
+  <Card title="SfM Backends" icon="camera" href="/guides/sfm-backends">
+    Choose GLOMAP, COLMAP, or supply your own camera poses from ARKit or COLMAP.
+  </Card>
+  <Card title="Output Formats" icon="file-export" href="/guides/output-formats">
+    SOG for instant web loading or PLY for editing, research, and offline tools.
+  </Card>
+</CardGroup>
+
+<Note>
+  The Splat API is currently in beta. The stable parameters documented here are part of the v1 contract. Advanced training parameters may evolve between versions.
+</Note>

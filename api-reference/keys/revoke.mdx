@@ -1,0 +1,82 @@
+---
+title: "DELETE /api/v1/keys/{id} — Revoke an API Key"
+description: "Permanently remove an API key from your account by its ID. Revocation is immediate and irreversible — affected services will receive 401 errors instantly."
+---
+
+Revoking a key permanently removes it from your account and invalidates it for all future requests. Any service or integration still using the revoked key will immediately begin receiving `401 Unauthorized` errors. Use the key's `id` — returned by [List API Keys](/api-reference/keys/list) — as the path parameter, not the key value itself.
+
+<Warning>
+  Revoking a key is immediate and irreversible. There is no confirmation step and no way to restore a revoked key. Make sure you have updated any services using this key before revoking it, or be prepared to deploy new credentials right away.
+</Warning>
+
+## Endpoint
+
+```
+DELETE https://api.splat-3d.com/api/v1/keys/{id}
+```
+
+## Authentication
+
+This endpoint requires a Bearer token in the `Authorization` header.
+
+```
+Authorization: Bearer s3d_your_key_here
+```
+
+## Path parameters
+
+<ParamField path="id" type="string" required>
+  The unique identifier of the key you want to revoke. This is the `id` field returned by `GET /api/v1/keys` — not the key value itself. Key IDs are stable and do not change.
+</ParamField>
+
+## Response
+
+A successful revocation returns `204 No Content` with an empty body. No `data` object is returned.
+
+## Examples
+
+<CodeGroup>
+
+```bash cURL
+curl --request DELETE \
+  --url https://api.splat-3d.com/api/v1/keys/key_01hx9k3m2p4q5r6s7t8u9v0w \
+  --header "Authorization: Bearer $SPLAT_API_KEY"
+```
+
+```python Python
+import requests
+
+key_id = "key_01hx9k3m2p4q5r6s7t8u9v0w"
+response = requests.delete(
+    f"https://api.splat-3d.com/api/v1/keys/{key_id}",
+    headers={"Authorization": f"Bearer {SPLAT_API_KEY}"},
+)
+# 204 No Content on success
+print(response.status_code)
+```
+
+```javascript Node.js
+const keyId = "key_01hx9k3m2p4q5r6s7t8u9v0w";
+const response = await fetch(
+  `https://api.splat-3d.com/api/v1/keys/${keyId}`,
+  {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${process.env.SPLAT_API_KEY}` },
+  }
+);
+// 204 No Content on success
+console.log(response.status);
+```
+
+</CodeGroup>
+
+## Error responses
+
+| Status | Code | Description |
+|--------|------|-------------|
+| `401` | `unauthorized` | Missing or invalid Bearer token. |
+| `404` | `not_found` | No key with this ID exists on your account. |
+
+<Note>
+  If you have lost a key and cannot find it in your key list, it is safe to assume you never need to revoke it — a lost key that you no longer have the value for cannot be used by anyone who finds it either, since it requires the exact `s3d_`-prefixed value to authenticate. To restore access, [create a new key](/api-reference/keys/create) and update your integrations with the new value.
+</Note>
